@@ -1,15 +1,13 @@
-import sys
+import os
 
 
-# representación del grafo
 class Graph:
     def __init__(self, vertices):
         self.V = vertices
         self.graph = [[0 for _ in range(vertices)] for _ in range(vertices)]
 
-    # vértice con la clave mínima
     def min_key(self, key, mst_set):
-        min_val = sys.maxsize
+        min_val = float('inf')
         min_index = None
 
         for v in range(self.V):
@@ -19,33 +17,35 @@ class Graph:
 
         return min_index
 
-    # algoritmo de Prim para encontrar el árbol de expansión mínima
-    def prim_mst(self):
-        parent = [None] * self.V
-        key = [sys.maxsize] * self.V
-        key[0] = 0
+    def nearest_neighbor(self):
+        path = []
         mst_set = [False] * self.V
+        key = [float('inf')] * self.V
 
-        parent[0] = -1
+        current = 0
+        path.append(current)
+        mst_set[current] = True
 
-        for _ in range(self.V):
-            u = self.min_key(key, mst_set)
-            mst_set[u] = True
-
+        for _ in range(self.V - 1):
             for v in range(self.V):
-                if self.graph[u][v] > 0 and not mst_set[v] and self.graph[u][v] < key[v]:
-                    parent[v] = u
-                    key[v] = self.graph[u][v]
+                if (self.graph[current][v] > 0
+                        and not mst_set[v]
+                        and self.graph[current][v] < key[v]):
+                    key[v] = self.graph[current][v]
+            next_node = self.min_key(key, mst_set)
+            path.append(next_node)
+            mst_set[next_node] = True
+            current = next_node
 
-        return parent
-    
-    # aristas del árbol de expansión mínima
-    def print_mst(self, parent):
-        print("Edge \tWeight")
-        for i in range(1, self.V):
-            print(parent[i], "-", i, "\t", self.graph[i][parent[i]])
+        path.append(0)  # Regresa al nodo de origen
+        return path
 
-# Función para leer la matriz de adyacencia desde un archivo
+    def print_tsp_path(self, path):
+        print("Ruta más corta:")
+        for i in range(len(path)):
+            print(chr(ord('A') + path[i]), end=" -> " if i < len(path) - 1 else "\n")
+
+
 def read_adjacency_matrix(filename):
     with open(filename, 'r') as file:
         lines = file.readlines()
@@ -59,20 +59,13 @@ def read_adjacency_matrix(filename):
 
         return graph
 
-# Main
+
 if __name__ == "__main__":
-    # Lee el nombre del archivo como argumento de línea de comandos
-    if len(sys.argv) != 2:
-        print("Uso: python programa.py archivo_entrada")
-        sys.exit()
+    current_directory = os.path.dirname(__file__)
+    filename = os.path.join(current_directory, "archivo.txt")
 
-    filename = sys.argv[1]
-
-    # Lee la matriz de adyacencia desde el archivo
     graph = read_adjacency_matrix(filename)
 
-    # Encuentra el árbol de expansión mínima utilizando el algoritmo de Prim
-    parent = graph.prim_mst()
+    path = graph.nearest_neighbor()
 
-    # Imprime el árbol de expansión mínima
-    graph.print_mst(parent)
+    graph.print_tsp_path(path)
