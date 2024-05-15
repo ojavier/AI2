@@ -1,5 +1,5 @@
 import os
-
+from collections import deque
 
 class Graph:
     def __init__(self, vertices):
@@ -44,6 +44,40 @@ class Graph:
         print("Ruta más corta:")
         for i in range(len(path)):
             print(chr(ord('A') + path[i]), end=" -> " if i < len(path) - 1 else "\n")
+    
+    def bfs(self, s, t, parent):
+        visited = [False] * self.V
+        queue = deque()
+        queue.append(s)
+        visited[s] = True
+        
+        while queue:
+            u = queue.popleft()
+            for v in range(self.V):
+                if not visited[v] and self.graph[u][v] > 0:
+                    queue.append(v)
+                    visited[v] = True
+                    parent[v] = u
+        return visited[t]
+
+    def ford_fulkerson(self, source, sink):
+        parent = [-1] * self.V
+        max_flow = 0
+        
+        while self.bfs(source, sink, parent):
+            path_flow = float('inf')
+            s = sink
+            while s != source:
+                path_flow = min(path_flow, self.graph[parent[s]][s])
+                s = parent[s]
+            max_flow += path_flow
+            v = sink
+            while v != source:
+                u = parent[v]
+                self.graph[u][v] -= path_flow
+                self.graph[v][u] += path_flow
+                v = parent[v]
+        return max_flow
 
 
 def read_adjacency_matrix(filename):
@@ -69,3 +103,13 @@ if __name__ == "__main__":
     path = graph.nearest_neighbor()
 
     graph.print_tsp_path(path)
+
+    # Leer la matriz de capacidades máximas
+    capacity_filename = os.path.join(current_directory, "capacidades.txt")
+    capacities_graph = read_adjacency_matrix(capacity_filename)
+
+    # Calcular y mostrar el flujo máximo de información
+    source = 0
+    sink = graph.V - 1
+    max_flow = capacities_graph.ford_fulkerson(source, sink)
+    print("Flujo máximo de información:", max_flow)
