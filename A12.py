@@ -4,39 +4,57 @@ from scipy.sparse.csgraph import dijkstra as dijkstra_sparse
 from scipy.sparse import csr_matrix
 import math
 
-# Función para leer el grafo desde el archivo "grafo.txt"
-def leer_grafo(nombre_archivo):
-    grafo = []
-    with open(nombre_archivo, 'r') as archivo:
-        for linea in archivo:
-            fila = list(map(int, linea.split()))
-            grafo.append(fila)
-    return grafo
+# Función para leer el archivo de entrada con distancias, capacidades y ubicaciones
+def leer_datos_completos(nombre_archivo):
+    try:
+        with open(nombre_archivo, 'r') as archivo:
+            # Leer el número de colonias
+            while True:
+                primera_linea = archivo.readline().strip()
+                if primera_linea and primera_linea[0].isdigit():
+                    break
+            n = int(primera_linea.split()[0])
 
-# Función para leer el archivo "archivo.txt" y obtener la matriz de adyacencia de la ruta
-def obtener_matriz_ruta(nombre_archivo, num_ciudades):
-    ruta = np.zeros((num_ciudades, num_ciudades))
-    with open(nombre_archivo, 'r') as archivo:
-        for linea in archivo:
-            ciudades = linea.strip().split()
-            if len(ciudades) != 2:
-                print(f"Advertencia: Ignorando línea incorrecta en {nombre_archivo}: {linea.strip()}")
-                continue
-            ciudad_actual, ciudad_siguiente = ciudades
-            ciudad_actual = ord(ciudad_actual) - ord('A')
-            ciudad_siguiente = ord(ciudad_siguiente) - ord('A')
-            ruta[ciudad_actual, ciudad_siguiente] = 1
-            ruta[ciudad_siguiente, ciudad_actual] = 1
-    return ruta
+            # Leer la matriz de distancias
+            distancias = []
+            for _ in range(n):
+                while True:
+                    linea = archivo.readline().strip()
+                    if linea and linea[0].isdigit():
+                        break
+                fila = list(map(int, linea.split()))
+                distancias.append(fila)
+            archivo.readline()  # Leer la línea en blanco que separa las matrices
 
-# Función para leer la matriz de capacidades desde el archivo "capacidades.txt"
-def leer_capacidades(nombre_archivo):
-    capacidades = []
-    with open(nombre_archivo, 'r') as archivo:
-        for linea in archivo:
-            fila = list(map(int, linea.split()))
-            capacidades.append(fila)
-    return capacidades
+            # Leer la matriz de capacidades
+            capacidades = []
+            for _ in range(n):
+                while True:
+                    linea = archivo.readline().strip()
+                    if linea and linea[0].isdigit():
+                        break
+                fila = list(map(int, linea.split()))
+                capacidades.append(fila)
+            archivo.readline()  # Leer la línea en blanco que separa las matrices de las ubicaciones
+
+            # Leer las ubicaciones (n centrales + 1 nueva central)
+            ubicaciones = []
+            for _ in range(n + 1):
+                while True:
+                    linea = archivo.readline().strip()
+                    if linea and linea[0] == '(':
+                        break
+                x, y = map(float, linea.strip('()').split(','))
+                ubicaciones.append((x, y))
+
+        return distancias, capacidades, ubicaciones
+    except FileNotFoundError:
+        print(f"Error: El archivo '{nombre_archivo}' no se encontró.")
+    except ValueError as ve:
+        print(f"Error de valor: {ve}")
+    except Exception as e:
+        print(f"Se produjo un error inesperado: {e}")
+        return None
 
 # Implementación del algoritmo de Dijkstra
 def dijkstra(grafo, nodo_inicial):
@@ -140,15 +158,6 @@ def flujo_maximo(capacidades, nodo_inicial, nodo_final):
     flujo = dijkstra_sparse(matriz_capacidades, directed=False, indices=nodo_inicial, return_predecessors=False)
     return flujo
 
-# Función para leer las ubicaciones de las centrales y la nueva contratación
-def leer_ubicaciones(nombre_archivo):
-    ubicaciones = []
-    with open(nombre_archivo, 'r') as archivo:
-        for linea in archivo:
-            x, y = map(float, linea.strip().split())
-            ubicaciones.append((x, y))
-    return ubicaciones
-
 # Función para encontrar la central más cercana a una nueva contratación
 def central_mas_cercana(centrales, nueva_central):
     min_dist = float('inf')
@@ -161,31 +170,47 @@ def central_mas_cercana(centrales, nueva_central):
     return central_mas_cercana, min_dist
 
 # Llamada a las funciones
-grafo = leer_grafo("grafo.txt")
-nodo_inicial = 0  # Puedes elegir cualquier nodo como inicial
-distancias = dijkstra(grafo, nodo_inicial)
-print("Distancias desde el nodo inicial:")
-print(distancias)
+def main():
+    nombre_archivo = 'ubicaciones.txt'
 
-# Encontrar y mostrar el MST
-padres = prim_mst(grafo)
-imprimir_mst(padres, grafo)
+    # Leer todas las entradas desde el archivo
+    resultado = leer_datos_completos(nombre_archivo)
+    if resultado is None:
+        print("Error al leer los datos. Saliendo del programa.")
+        return
 
-num_ciudades = len(grafo)
-matriz_ruta = obtener_matriz_ruta("archivo.txt", num_ciudades)
-ruta = encontrar_ruta_corta(matriz_ruta, nodo_inicial)
-imprimir_ruta(ruta)
+    distancias, capacidades, ubicaciones = resultado
 
-capacidades = leer_capacidades("capacidades.txt")
-nodo_final = 0  # Puedes elegir cualquier nodo como final
-flujo = flujo_maximo(capacidades, nodo_inicial, nodo_final)
-print(f"Flujo máximo de información: {flujo}")
+    # Separar las ubicaciones en centrales y la nueva central
+    centrales = ubicaciones[:-1]
+    nueva_central = ubicaciones[-1]
 
-# Leer ubicaciones de las centrales y la nueva contratación
-ubicaciones = leer_ubicaciones("ubicaciones.txt")
-centrales = ubicaciones[:-1]
-nueva_central = ubicaciones[-1]
+    # Convertir las matrices de distancias y capacidades a listas para su uso
+    grafo = distancias
 
-# Encontrar la central más cercana a la nueva contratación
-central_cercana, distancia = central_mas_cercana(centrales, nueva_central)
-print(f"La central más cercana a la nueva contratación está en {central_cercana} con una distancia de {distancia:.2f} kilómetros.")
+    nodo_inicial = 0  # Puedes elegir cualquier nodo como inicial
+
+    # Calcular las distancias usando Dijkstra
+    distancias_dijkstra = dijkstra(grafo, nodo_inicial)
+    print("Distancias desde el nodo inicial:")
+    print(distancias_dijkstra)
+
+    # Encontrar y mostrar el MST
+    padres = prim_mst(grafo)
+    imprimir_mst(padres, grafo)
+
+    num_ciudades = len(grafo)
+    matriz_ruta = np.array(grafo)
+    ruta = encontrar_ruta_corta(matriz_ruta, nodo_inicial)
+    imprimir_ruta(ruta)
+
+    nodo_final = 0  # Puedes elegir cualquier nodo como final
+    flujo = flujo_maximo(capacidades, nodo_inicial, nodo_final)
+    print(f"Flujo máximo de información: {flujo}")
+
+    # Encontrar la central más cercana a la nueva contratación
+    central_cercana, distancia = central_mas_cercana(centrales, nueva_central)
+    print(f"La central más cercana a la nueva contratación está en {central_cercana} con una distancia de {distancia:.2f} kilómetros.")
+
+if __name__ == "__main__":
+    main()
