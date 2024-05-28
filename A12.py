@@ -3,8 +3,8 @@ import numpy as np
 from scipy.sparse.csgraph import dijkstra as dijkstra_sparse
 from scipy.sparse import csr_matrix
 import math
+from scipy.spatial import Voronoi
 
-# Función para leer el archivo de entrada con distancias, capacidades y ubicaciones
 def leer_datos_completos(nombre_archivo):
     try:
         with open(nombre_archivo, 'r') as archivo:
@@ -158,7 +158,7 @@ def encontrar_ruta_corta(matriz_ruta, nodo_inicial):
 def imprimir_ruta(ruta):
     if ruta:
         ruta_nombres = [chr(ciudad + ord('A')) for ciudad in ruta]
-        print("Ruta más corta que visita cada colonia exactamente una vez y regresa al origen:")
+        print("\nRuta más corta que visita cada colonia exactamente una vez y regresa al origen:")
         print(" -> ".join(ruta_nombres))
     else:
         print("No se encontró ninguna ruta válida.")
@@ -169,15 +169,16 @@ def flujo_maximo(capacidades, nodo_inicial, nodo_final):
     flujo = dijkstra_sparse(matriz_capacidades, directed=False, indices=nodo_inicial, return_predecessors=False)
     return flujo
 
-# Función para encontrar la central más cercana a una nueva contratación
-def central_mas_cercana(centrales, nueva_central):
+# Función para encontrar la central más cercana a una nueva utilizando Voronoi
+def central_mas_cercana_voronoi(centrales, nueva_central):
     min_dist = float('inf')
     central_mas_cercana = None
-    for central in centrales:
-        dist = math.sqrt((central[0] - nueva_central[0]) ** 2 + (central[1] - nueva_central[1]) ** 2)
+    for i, punto in enumerate(centrales):
+        dist = np.linalg.norm(np.array(punto) - np.array(nueva_central))
         if dist < min_dist:
             min_dist = dist
-            central_mas_cercana = central
+            central_mas_cercana = punto
+
     return central_mas_cercana, min_dist
 
 # Llamada a las funciones
@@ -203,7 +204,7 @@ def main():
 
     # Calcular las distancias usando Dijkstra
     distancias_dijkstra = dijkstra(grafo, nodo_inicial)
-    print("Distancias desde el nodo inicial:")
+    print("\nDistancias desde el nodo inicial:")
     print(distancias_dijkstra)
 
     # Encontrar y mostrar el MST
@@ -217,11 +218,11 @@ def main():
 
     nodo_final = 0  # Puedes elegir cualquier nodo como final
     flujo = flujo_maximo(capacidades, nodo_inicial, nodo_final)
-    print(f"Flujo máximo de información: {flujo}")
+    print(f"\nFlujo máximo de información: {flujo}")
 
-    # Encontrar la central más cercana a la nueva contratación
-    central_cercana, distancia = central_mas_cercana(centrales, nueva_central)
-    print(f"La central más cercana a la nueva contratación está en {central_cercana} con una distancia de {distancia:.2f} kilómetros.")
+    # Encontrar la central más cercana a la nueva usando Voronoi
+    central_cercana, distancia = central_mas_cercana_voronoi(centrales, nueva_central)
+    print(f"\nLa central más cercana a la nueva contratación está en {central_cercana} con una distancia de {distancia:.2f} kilómetros.")
 
 if __name__ == "__main__":
     main()
