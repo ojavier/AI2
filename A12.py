@@ -114,7 +114,16 @@ def imprimir_mst(padres, grafo):
     for i in range(1, len(padres)):
         print(f"{padres[i]} - {i} \t{grafo[i][padres[i]]}")
 
-# Función para encontrar la ruta más corta que visita cada colonia exactamente una vez y regresa al origen
+# Función para leer el grafo desde el archivo "grafo.txt"
+def leer_grafo(nombre_archivo):
+    grafo = []
+    with open(nombre_archivo, 'r') as archivo:
+        for linea in archivo:
+            fila = list(map(int, linea.split()))
+            grafo.append(fila)
+    return grafo
+
+# Implementación del algoritmo de Nearest Neighbor para encontrar la ruta más corta
 def encontrar_ruta_corta(matriz_ruta, nodo_inicial):
     num_ciudades = matriz_ruta.shape[0]
     if nodo_inicial < 0 or nodo_inicial >= num_ciudades:
@@ -123,25 +132,27 @@ def encontrar_ruta_corta(matriz_ruta, nodo_inicial):
     
     visitado = [False] * num_ciudades
     ruta = [nodo_inicial]
-
-    def backtrack(ciudad_actual):
-        if len(ruta) == num_ciudades:
-            return matriz_ruta[ciudad_actual, nodo_inicial]
-        for ciudad_siguiente in range(num_ciudades):
-            if matriz_ruta[ciudad_actual, ciudad_siguiente] and not visitado[ciudad_siguiente]:
-                visitado[ciudad_siguiente] = True
-                ruta.append(ciudad_siguiente)
-                if backtrack(ciudad_siguiente):
-                    return True
-                ruta.pop()
-                visitado[ciudad_siguiente] = False
-        return False
-
     visitado[nodo_inicial] = True
-    if backtrack(nodo_inicial):
-        return ruta
-    else:
-        return None
+    ciudad_actual = nodo_inicial
+
+    while len(ruta) < num_ciudades:
+        min_dist = float('inf')
+        ciudad_siguiente = None
+        for ciudad in range(num_ciudades):
+            if not visitado[ciudad] and matriz_ruta[ciudad_actual, ciudad] > 0 and matriz_ruta[ciudad_actual, ciudad] < min_dist:
+                min_dist = matriz_ruta[ciudad_actual, ciudad]
+                ciudad_siguiente = ciudad
+        if ciudad_siguiente is not None:
+            ruta.append(ciudad_siguiente)
+            visitado[ciudad_siguiente] = True
+            ciudad_actual = ciudad_siguiente
+        else:
+            print("Error: No se encontró una ciudad siguiente válida.")
+            return None
+    
+    # Volver al nodo inicial para completar el ciclo
+    ruta.append(nodo_inicial)
+    return ruta
 
 # Función para imprimir la ruta más corta
 def imprimir_ruta(ruta):
